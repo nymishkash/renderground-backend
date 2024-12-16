@@ -1,13 +1,9 @@
-// server.js
 const express = require("express");
 const { createCanvas } = require("canvas");
-const fs = require("fs");
-const path = require("path");
 const EventEmitter = require("events");
 const cors = require("cors");
 
 const app = express();
-// At the top of server.js, modify the CORS setup:
 app.use(
   cors({
     origin: "https://renderground.netlify.app",
@@ -17,13 +13,10 @@ app.use(
 );
 app.use(express.json());
 
-// Event emitter for logging exports
 const exportEmitter = new EventEmitter();
 
-// Store canvases in memory with metadata
 const canvases = new Map();
 
-// Middleware to handle errors
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
@@ -32,7 +25,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Enhanced canvas initialization with background color and metadata
 app.post("/canvas", (req, res) => {
   const {
     width = 800,
@@ -49,11 +41,9 @@ app.post("/canvas", (req, res) => {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  // Set background
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, width, height);
 
-  // Store canvas with metadata
   canvases.set(id, {
     canvas,
     metadata: {
@@ -72,7 +62,6 @@ app.post("/canvas", (req, res) => {
   });
 });
 
-// Get canvas metadata
 app.get("/canvas/:id", (req, res) => {
   const { id } = req.params;
   const canvasData = canvases.get(id);
@@ -91,46 +80,42 @@ app.get("/canvas/:id", (req, res) => {
   });
 });
 
-// Fix canvas export by updating the SVG conversion
-function canvasToSVG(canvas) {
-  const width = canvas.width;
-  const height = canvas.height;
+// function canvasToSVG(canvas) {
+//   const width = canvas.width;
+//   const height = canvas.height;
 
-  try {
-    // Get canvas data as PNG for better quality
-    const imageData = canvas
-      .toDataURL("image/png")
-      .replace(/^data:image\/png;base64,/, "");
-    const base64Data = Buffer.from(imageData, "base64").toString("base64");
+//   try {
+//     // Get canvas data as PNG for better quality
+//     const imageData = canvas
+//       .toDataURL("image/png")
+//       .replace(/^data:image\/png;base64,/, "");
+//     const base64Data = Buffer.from(imageData, "base64").toString("base64");
 
-    // Create SVG with proper encoding
-    const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        <svg 
-          width="${width}" 
-          height="${height}" 
-          viewBox="0 0 ${width} ${height}"
-          xmlns="http://www.w3.org/2000/svg" 
-          xmlns:xlink="http://www.w3.org/1999/xlink"
-          version="1.1"
-        >
-          <rect width="100%" height="100%" fill="white"/>
-          <image 
-            width="100%" 
-            height="100%" 
-            preserveAspectRatio="none" 
-            xlink:href="data:image/png;base64,${base64Data}"
-          />
-        </svg>`;
+//     const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+//         <svg
+//           width="${width}"
+//           height="${height}"
+//           viewBox="0 0 ${width} ${height}"
+//           xmlns="http://www.w3.org/2000/svg"
+//           xmlns:xlink="http://www.w3.org/1999/xlink"
+//           version="1.1"
+//         >
+//           <rect width="100%" height="100%" fill="white"/>
+//           <image
+//             width="100%"
+//             height="100%"
+//             preserveAspectRatio="none"
+//             xlink:href="data:image/png;base64,${base64Data}"
+//           />
+//         </svg>`;
 
-    return svg;
-  } catch (error) {
-    console.error("SVG conversion error:", error);
-    throw error;
-  }
-}
+//     return svg;
+//   } catch (error) {
+//     console.error("SVG conversion error:", error);
+//     throw error;
+//   }
+// }
 
-// Update the export endpoint
-// Single export endpoint
 app.get("/canvas/:id/export", (req, res) => {
   const { id } = req.params;
   const canvasData = canvases.get(id);
@@ -140,17 +125,14 @@ app.get("/canvas/:id/export", (req, res) => {
   }
 
   try {
-    // Convert canvas to SVG
     const width = canvasData.canvas.width;
     const height = canvasData.canvas.height;
 
-    // Get canvas data as PNG and convert to base64
     const imageData = canvasData.canvas
       .toDataURL("image/png")
       .replace(/^data:image\/png;base64,/, "");
     const base64Data = Buffer.from(imageData, "base64").toString("base64");
 
-    // Create SVG with embedded image
     const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
         <svg 
           width="${width}" 
@@ -169,7 +151,6 @@ app.get("/canvas/:id/export", (req, res) => {
           />
         </svg>`;
 
-    // Create HTML document
     const html = `
   <!DOCTYPE html>
   <html lang="en">
@@ -207,7 +188,6 @@ app.get("/canvas/:id/export", (req, res) => {
   </body>
   </html>`;
 
-    // Set headers for file download
     res.setHeader("Content-Type", "text/html");
     res.setHeader(
       "Content-Disposition",
@@ -219,7 +199,6 @@ app.get("/canvas/:id/export", (req, res) => {
 
     res.send(html);
 
-    // Log export
     exportEmitter.emit("export", {
       canvasId: id,
       timestamp: new Date(),
@@ -232,7 +211,6 @@ app.get("/canvas/:id/export", (req, res) => {
   }
 });
 
-// List all canvases
 app.get("/canvas", (req, res) => {
   const canvasList = Array.from(canvases.entries()).map(([id, data]) => ({
     id,
@@ -246,7 +224,6 @@ app.get("/canvas", (req, res) => {
   res.json(canvasList);
 });
 
-// Delete canvas
 app.delete("/canvas/:id", (req, res) => {
   const { id } = req.params;
 
@@ -258,80 +235,6 @@ app.delete("/canvas/:id", (req, res) => {
   res.json({ message: "Canvas deleted successfully" });
 });
 
-// Enhanced SVG conversion with optimization
-function canvasToSVG(canvas) {
-  const width = canvas.width;
-  const height = canvas.height;
-
-  try {
-    // Get canvas data as PNG for better quality
-    const imageData = canvas
-      .toDataURL("image/png")
-      .replace(/^data:image\/png;base64,/, "");
-    const base64Data = Buffer.from(imageData, "base64").toString("base64");
-
-    // Create SVG with proper encoding
-    const svg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-        <svg 
-          width="${width}" 
-          height="${height}" 
-          viewBox="0 0 ${width} ${height}"
-          xmlns="http://www.w3.org/2000/svg" 
-          xmlns:xlink="http://www.w3.org/1999/xlink"
-          version="1.1"
-        >
-          <rect width="100%" height="100%" fill="white"/>
-          <image 
-            width="100%" 
-            height="100%" 
-            preserveAspectRatio="none" 
-            xlink:href="data:image/png;base64,${base64Data}"
-          />
-        </svg>`;
-
-    return svg;
-  } catch (error) {
-    console.error("SVG conversion error:", error);
-    throw error;
-  }
-}
-// Add this to your existing server.js
-
-// Helper function to convert canvas to SVG (update existing function)
-function canvasToSVG(canvas) {
-  const width = canvas.width;
-  const height = canvas.height;
-
-  // Get canvas data as PNG for better quality
-  const imageData = canvas.toDataURL("image/png");
-
-  // Create SVG with viewBox for better scaling
-  let svg = `
-        <svg 
-            width="${width}" 
-            height="${height}" 
-            viewBox="0 0 ${width} ${height}"
-            xmlns="http://www.w3.org/2000/svg" 
-            version="1.1"
-        >`;
-
-  // Add white background to ensure visibility
-  svg += `<rect width="100%" height="100%" fill="white"/>`;
-
-  // Add the canvas content as an image
-  svg += `<image 
-        width="100%" 
-        height="100%" 
-        preserveAspectRatio="none" 
-        href="${imageData}"
-    />`;
-
-  svg += "</svg>";
-
-  return svg;
-}
-
-// Enhanced export event listener with more details
 exportEmitter.on("export", (data) => {
   console.log("Export event:", {
     timestamp: data.timestamp,
@@ -345,7 +248,6 @@ exportEmitter.on("export", (data) => {
   });
 });
 
-// Modify the elements endpoint to ensure it sends a response:
 app.post("/canvas/:id/elements", (req, res) => {
   const { id } = req.params;
   const { type, properties } = req.body;
@@ -423,19 +325,15 @@ app.post("/canvas/:id/elements", (req, res) => {
           maxWidth,
         } = properties;
         try {
-          // Save the current context state
           ctx.save();
 
-          // Set text properties
           ctx.font = font || "20px Arial";
           ctx.fillStyle = textColor;
           ctx.textAlign = align;
           ctx.textBaseline = baseline;
 
-          // Draw the text
           ctx.fillText(text, textX, textY, maxWidth);
 
-          // Restore the context state
           ctx.restore();
 
           console.log("Text added:", {
@@ -451,7 +349,6 @@ app.post("/canvas/:id/elements", (req, res) => {
       }
     }
 
-    // Update metadata
     canvasData.metadata.lastModified = new Date();
     canvasData.metadata.elementCount++;
 
@@ -460,7 +357,6 @@ app.post("/canvas/:id/elements", (req, res) => {
       canvasData.metadata.elementCount
     );
 
-    // Send response
     res.json({
       message: "Element added successfully",
       metadata: canvasData.metadata,
@@ -471,7 +367,6 @@ app.post("/canvas/:id/elements", (req, res) => {
   }
 });
 
-// In the preview endpoint:
 app.get("/canvas/:id/preview", (req, res) => {
   const { id } = req.params;
   console.log("Preview requested for:", id);
