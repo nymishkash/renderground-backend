@@ -10,7 +10,7 @@ const app = express();
 // At the top of server.js, modify the CORS setup:
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "htts://renderground.netlify.app",
     methods: ["GET", "POST", "DELETE"],
     allowedHeaders: ["Content-Type"],
   })
