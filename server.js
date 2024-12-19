@@ -399,6 +399,10 @@ app.get("/canvas/:id/preview", (req, res) => {
   }
 });
 
+app.get("/ping", (req, res) => {
+  res.status(200).json({ message: "success", status: "Server is active" });
+});
+
 const PORT = process.env.PORT || 6969;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
